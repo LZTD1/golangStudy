@@ -61,11 +61,9 @@ jobs:
     needs: ['build']
     strategy:
       matrix:
-        goos: [linux, windows, darwin]
-        goarch: ["386", amd64, arm64]
+        goos: [linux, windows]
+        goarch: [amd64, arm64]
         exclude:
-          - goarch: "386"
-            goos: darwin
           - goarch: arm64
             goos: windows
     steps:
@@ -78,3 +76,4 @@ jobs:
         goversion: "https://dl.google.com/go/go1.23.3.linux-amd64.tar.gz"
         project_path: "./cmd"
         binary_name: "main"
+        release_name: golangStudy
