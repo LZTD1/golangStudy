@@ -10,6 +10,7 @@ import (
 
 func main() {
 	f := flag.String("s", "", "Contains word")
+	d := flag.Int("d", 2, "Depth scanning")
 	flag.Parse()
 	if *f != "" {
 		fmt.Printf("Установлен флаг - %s\n", *f)
@@ -19,16 +20,16 @@ func main() {
 
 	ch := make(chan []crawler.Document)
 
-	go func(ch chan []crawler.Document) {
+	go func(ch chan []crawler.Document, d int) {
 		fmt.Println("Запуск crawler`а по https://go.dev")
-		r, _ := crawl.Scan("https://go.dev", 2)
+		r, _ := crawl.Scan("https://go.dev", d)
 		ch <- r
-	}(ch)
-	go func(ch chan []crawler.Document) {
+	}(ch, *d)
+	go func(ch chan []crawler.Document, d int) {
 		fmt.Println("Запуск crawler`а по https://devdocs.io/go")
-		r, _ := crawl.Scan("https://devdocs.io/go/", 2)
+		r, _ := crawl.Scan("https://devdocs.io/go/", d)
 		ch <- r
-	}(ch)
+	}(ch, *d)
 
 	r := []crawler.Document{}
 	for i := 0; i < 2; i++ {
