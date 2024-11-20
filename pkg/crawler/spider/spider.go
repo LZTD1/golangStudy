@@ -7,6 +7,7 @@ import (
 	"golang.org/x/net/html"
 	"net/http"
 	"strings"
+	"sync/atomic"
 )
 
 // Service - служба поискового робота.
@@ -18,6 +19,8 @@ func New() *Service {
 	return &s
 }
 
+var idCounter int64
+
 // Scan осуществляет рекурсивный обход ссылок сайта, указанного в URL,
 // с учётом глубины перехода по ссылкам, переданной в depth.
 func (s *Service) Scan(url string, depth int) (data []crawler.Document, err error) {
@@ -27,6 +30,7 @@ func (s *Service) Scan(url string, depth int) (data []crawler.Document, err erro
 
 	for url, title := range pages {
 		item := crawler.Document{
+			ID:    generateID(),
 			URL:   url,
 			Title: title,
 		}
@@ -119,4 +123,7 @@ func sliceContains(slice []string, value string) bool {
 		}
 	}
 	return false
+}
+func generateID() int64 {
+	return atomic.AddInt64(&idCounter, 1)
 }

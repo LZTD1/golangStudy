@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"goStudy/pkg/crawler"
 	"goStudy/pkg/crawler/spider"
-	"strings"
+	"goStudy/pkg/reverseIndex"
 )
 
 func main() {
@@ -31,17 +31,48 @@ func main() {
 		ch <- r
 	}(ch, *d)
 
-	r := []crawler.Document{}
+	docSort := []crawler.Document{}
+	iDoc := make(reverseIndex.ReverseIndex)
+
 	for i := 0; i < 2; i++ {
 		select {
 		case docs := <-ch:
 			for _, doc := range docs {
-				if strings.Contains(strings.ToLower(doc.Title), *f) {
-					r = append(r, doc)
-				}
+				iDoc.Add(doc)
+				docSort = append(docSort, doc)
 			}
 		}
 	}
 
-	fmt.Printf("Собрано %d ссылок", len(r))
+	fmt.Printf("Собрано %d ссылок\n", len(docSort))
+	fmt.Println(docSort)
+	fmt.Println(iDoc)
+	fmt.Println("\n")
+
+	val, ok := iDoc[*f]
+	if *f != "" && ok {
+		for _, i2 := range val {
+			fmt.Println(docSort[binarySearch(docSort, i2)].Title)
+		}
+	} else {
+		fmt.Println("Такого слова не найдено !")
+	}
+
+}
+
+func binarySearch(arr []crawler.Document, target int64) int64 {
+	low, high := 0, len(arr)-1
+	for low <= high {
+		mid := low + (high-low)/2
+		if arr[mid].ID == target {
+			return int64(mid)
+		}
+		if arr[mid].ID > target {
+			high = mid - 1
+		}
+		if arr[mid].ID < target {
+			low = mid + 1
+		}
+	}
+	return -1
 }
