@@ -5,10 +5,20 @@ import (
 	"fmt"
 	"goStudy/pkg/crawler"
 	"goStudy/pkg/crawler/spider"
+	"goStudy/pkg/localStore"
+	"goStudy/pkg/localStore/gob"
 	"goStudy/pkg/reverseIndex"
+	"slices"
 )
 
+var urls = []string{
+	"https://go.dev",
+	"https://devdocs.io/go/",
+}
+
 func main() {
+	var s localStore.Store = gob.New("./cache.gob")
+
 	f := flag.String("s", "", "Contains word")
 	d := flag.Int("d", 2, "Depth scanning")
 	flag.Parse()
@@ -18,37 +28,53 @@ func main() {
 
 	crawl := spider.New()
 
-	ch := make(chan []crawler.Document)
+	links := s.Links()
+	urlsToCrawl := []string{}
 
-	go func(ch chan []crawler.Document, d int) {
-		fmt.Println("Запуск crawler`а по https://go.dev")
-		r, _ := crawl.Scan("https://go.dev", d)
-		ch <- r
-	}(ch, *d)
-	go func(ch chan []crawler.Document, d int) {
-		fmt.Println("Запуск crawler`а по https://devdocs.io/go")
-		r, _ := crawl.Scan("https://devdocs.io/go/", d)
-		ch <- r
-	}(ch, *d)
+	for _, url := range urls {
+		if !slices.Contains(links, url) {
+			urlsToCrawl = append(urlsToCrawl, url)
+		}
+	}
+
+	ch := make(chan []crawler.Document, len(urlsToCrawl))
+
+	for _, url := range urlsToCrawl {
+		go func(ch chan []crawler.Document, d int, url string) {
+			fmt.Printf("Запуск crawler`а по %s\n", url)
+			r, _ := crawl.Scan(url, d)
+			ch <- r
+		}(ch, *d, url)
+	}
 
 	docSort := []crawler.Document{}
 	iDoc := make(reverseIndex.ReverseIndex)
 
-	for i := 0; i < 2; i++ {
-		select {
-		case docs := <-ch:
-			for _, doc := range docs {
-				iDoc.Add(doc)
-				docSort = append(docSort, doc)
+	if len(urlsToCrawl) == 0 {
+		iDoc = s.Data()
+	} else {
+		for range urlsToCrawl {
+			select {
+			case docs := <-ch:
+				for _, doc := range docs {
+					iDoc.Add(doc)
+					docSort = append(docSort, doc)
+				}
 			}
 		}
+		close(ch)
+		s.SetData(iDoc)
+		s.SetLinks(urlsToCrawl)
 	}
 
 	fmt.Printf("Собрано %d ссылок\n", len(docSort))
-	fmt.Println(docSort)
-	fmt.Println(iDoc)
-	fmt.Println("\n")
 
+	fmt.Println()
+	fmt.Println(s.Links())
+	fmt.Println(s.Data())
+	fmt.Println()
+
+	s.Save()
 	val, ok := iDoc[*f]
 	if *f != "" && ok {
 		for _, i2 := range val {
